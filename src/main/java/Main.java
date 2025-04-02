@@ -21,10 +21,11 @@ public class Main {
        Socket client = serverSocket.accept();// Wait for connection from client.
        System.out.println("accepted new connection");
        OutputStream outputStream = client.getOutputStream();
-       PrintWriter printWriter = new PrintWriter(outputStream);
+       PrintWriter printWriter = new PrintWriter(outputStream, true);
        printWriter.write("HTTP/1.1 200 OK\r\n\r\n");
-       System.out.println("HTTP/1.1 200 OK\r\n\r\n");
        printWriter.close();
+       client.close();
+       serverSocket.close();
      } catch (IOException e) {
        System.out.println("IOException: " + e.getMessage());
      }
