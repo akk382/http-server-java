@@ -23,6 +23,8 @@ public class Main {
        OutputStream outputStream = client.getOutputStream();
        PrintWriter printWriter = new PrintWriter(outputStream);
        printWriter.write("HTTP/1.1 200 OK\r\n\r\n");
+       System.out.println("HTTP/1.1 200 OK\r\n\r\n");
+       printWriter.close();
      } catch (IOException e) {
        System.out.println("IOException: " + e.getMessage());
      }
