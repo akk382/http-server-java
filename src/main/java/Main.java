@@ -49,7 +49,7 @@ public class Main {
             String requestTarget = requestLineParts[1]; // URL / resource path
             String requestVersion = requestLineParts[2];
 
-            if (requestTarget.isEmpty()) {
+            if (requestTarget.isEmpty() || requestTarget.equals("/")) {
                 outputStream.write("HTTP/1.1 200 OK\r\n\r\n".getBytes());
             } else {
                 outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
