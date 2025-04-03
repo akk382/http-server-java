@@ -26,34 +26,29 @@ public class Main {
             System.out.println("accepted new connection");
             OutputStream outputStream = client.getOutputStream();
 
-
-            InputStream inputStream = new BufferedInputStream(client.getInputStream());
-            byte[] request_bytes = inputStream.readAllBytes();
-            String request = new String(request_bytes, StandardCharsets.UTF_8);
-
-            String[] splitRequest = request.split("\r\n");
-            String requestLine = splitRequest[0];
-            List<String> requestHeaders = new ArrayList<>();
-            int i = 1;
-            while (i < splitRequest.length && !Objects.equals(splitRequest[i], "")) {
-                requestHeaders.add(splitRequest[i]);
-                i++;
-            }
-            String requestBody;
-            if (i < splitRequest.length) {
-                requestBody = splitRequest[i];
+            List<String> request = new ArrayList<>();
+            String message;
+            InputStream inputStream = client.getInputStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+            while (!Objects.equals(message = reader.readLine(), "")) {
+                request.add(message);
             }
 
-            String[] requestLineParts = requestLine.split(" ");
-            String requestMethod = requestLineParts[0];
-            String requestTarget = requestLineParts[1]; // URL / resource path
-            String requestVersion = requestLineParts[2];
+            if (!request.isEmpty()) {
+                String requestLine = request.getFirst();
 
-            if (requestTarget.isEmpty() || requestTarget.equals("/")) {
-                outputStream.write("HTTP/1.1 200 OK\r\n\r\n".getBytes());
-            } else {
-                outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
+                String[] requestLineParts = requestLine.split(" ");
+                String requestMethod = requestLineParts[0];
+                String requestTarget = requestLineParts[1]; // URL / resource path
+                String requestVersion = requestLineParts[2];
+
+                if (requestTarget.isEmpty() || requestTarget.equals("/")) {
+                    outputStream.write("HTTP/1.1 200 OK\r\n\r\n".getBytes());
+                } else {
+                    outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
+                }
             }
+
 
 
             client.close();
