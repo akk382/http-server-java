@@ -35,11 +35,14 @@ public class Main {
             String requestLine = splitRequest[0];
             List<String> requestHeaders = new ArrayList<>();
             int i = 1;
-            while (!Objects.equals(splitRequest[i], "")) {
+            while (i < splitRequest.length && !Objects.equals(splitRequest[i], "")) {
                 requestHeaders.add(splitRequest[i]);
                 i++;
             }
-            String requestBody = splitRequest[i];
+            String requestBody;
+            if (i < splitRequest.length) {
+                requestBody = splitRequest[i];
+            }
 
             String[] requestLineParts = requestLine.split(" ");
             String requestMethod = requestLineParts[0];
