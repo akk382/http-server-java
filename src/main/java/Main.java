@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 public class Main {
     public static void main(String[] args) {
@@ -48,7 +49,18 @@ public class Main {
                             "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
                             restOfURI.length(), restOfURI);
                     outputStream.write(response.getBytes());
-                } else {
+                }
+                else if (httpURI.startsWith("/user-agent")) {
+                    Optional<String> userAgentHeader = request.stream().filter(req -> req.startsWith("User-Agent: ")).findFirst();
+                    if (userAgentHeader.isPresent()) {
+                        String userAgent = userAgentHeader.get().substring("User-Agent: ".length());
+                        String response = String.format(
+                                "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
+                                userAgent.length(), userAgent);
+                        outputStream.write(response.getBytes());
+                    }
+                }
+                else {
                     outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
                 }
             }
