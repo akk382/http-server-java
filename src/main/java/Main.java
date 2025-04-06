@@ -26,6 +26,9 @@ public class Main {
                 Socket client = serverSocket.accept();// Wait for connection from client.
                 System.out.println("accepted new connection");
 
+                if (directory != null) {
+                    System.out.println("Directory received: " + directory.getPath());
+                }
                 executorService.submit(new RequestExecutor(client, directory));
             }
         } catch (IOException e) {

@@ -65,9 +65,13 @@ public class RequestExecutor implements Runnable {
                         outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
                     } else {
                         String restOfUri = httpURI.substring("/files/".length());
+                        System.out.println("RestOfURI: " + restOfUri);
                         File file = new File(directory.getPath() + restOfUri);
+
+                        System.out.println("File: " + file.getPath());
                         InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
                         byte[] bytes = fileInputStream.readAllBytes();
+                        System.out.println("Response Body: "+ new String(bytes, StandardCharsets.UTF_8));
                         String response = String.format(
                                 "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
                                 bytes.length, new String(bytes, StandardCharsets.UTF_8));
