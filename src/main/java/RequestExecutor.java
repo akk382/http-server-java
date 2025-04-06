@@ -66,7 +66,7 @@ public class RequestExecutor implements Runnable {
                     } else {
                         String restOfUri = httpURI.substring("/files/".length());
                         System.out.println("RestOfURI: " + restOfUri);
-                        File file = new File(directory.getPath() + File.pathSeparator + restOfUri);
+                        File file = new File(directory.getPath() + File.separator + restOfUri);
 
                         System.out.println("File: " + file.getPath());
                         InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
