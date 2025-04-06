@@ -11,7 +11,8 @@ public class RequestExecutor implements Runnable {
     private Socket client;
     private File directory;
 
-    private RequestExecutor() {}
+    private RequestExecutor() {
+    }
 
     public RequestExecutor(Socket clientSocket) {
         this.client = clientSocket;
@@ -22,6 +23,7 @@ public class RequestExecutor implements Runnable {
         this.directory = directory;
     }
 
+    // TODO: refactor this method
     @Override
     public void run() {
         try {
@@ -61,22 +63,18 @@ public class RequestExecutor implements Runnable {
                         outputStream.write(response.getBytes());
                     }
                 } else if (httpURI.startsWith("/files/")) {
-                    if (this.directory == null) {
-                        outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
-                    } else {
-                        String restOfUri = httpURI.substring("/files/".length());
-                        System.out.println("RestOfURI: " + restOfUri);
-                        File file = new File(directory.getPath() + File.separator + restOfUri);
-
-                        System.out.println("File: " + file.getPath());
-                        InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
-                        byte[] bytes = fileInputStream.readAllBytes();
-                        System.out.println("Response Body: "+ new String(bytes, StandardCharsets.UTF_8));
-                        String response = String.format(
-                                "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
-                                bytes.length, new String(bytes, StandardCharsets.UTF_8));
-                        outputStream.write(response.getBytes());
-                    }
+                    handleIfDirectoryNotFound(directory, outputStream);
+                    String restOfUri = httpURI.substring("/files/".length());
+                    File file = new File(directory.getPath() + File.separator + restOfUri);
+                    handleIfFileNotFound(file, outputStream);
+                    System.out.println("File: " + file.getPath());
+                    InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
+                    byte[] bytes = fileInputStream.readAllBytes();
+                    System.out.println("Response Body: " + new String(bytes, StandardCharsets.UTF_8));
+                    String response = String.format(
+                            "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
+                            bytes.length, new String(bytes, StandardCharsets.UTF_8));
+                    outputStream.write(response.getBytes());
                 } else {
                     outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
                 }
@@ -86,8 +84,17 @@ public class RequestExecutor implements Runnable {
         } catch (IOException ex) {
             System.out.println("Error occurred\n");
         }
+    }
 
+    private void handleIfDirectoryNotFound(File directory, OutputStream outputStream) throws IOException {
+        outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
+        throw new IOException("Directory not found.\n");
+    }
 
-
+    private void handleIfFileNotFound(File file, OutputStream outputStream) throws IOException {
+        if (!file.exists()) {
+            outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
+            throw new IOException("File not found.\n");
+        }
     }
 }
