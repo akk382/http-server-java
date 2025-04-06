@@ -13,8 +13,6 @@ public class Main {
         // You can use print statements as follows for debugging, they'll be visible when running tests.
         System.out.println("Logs from your program will appear here!");
 
-        // Uncomment this block to pass the first stage
-
         try {
             ServerSocket serverSocket = new ServerSocket(4221);
 
@@ -38,12 +36,18 @@ public class Main {
                 String requestLine = request.getFirst();
 
                 String[] requestLineParts = requestLine.split(" ");
-                String requestMethod = requestLineParts[0];
-                String requestTarget = requestLineParts[1]; // URL / resource path
-                String requestVersion = requestLineParts[2];
+                String httpMethod = requestLineParts[0];
+                String httpURI = requestLineParts[1]; // URL / resource path
+                String httpVersion = requestLineParts[2];
 
-                if (requestTarget.isEmpty() || requestTarget.equals("/")) {
+                if (httpURI.isEmpty() || httpURI.equals("/")) {
                     outputStream.write("HTTP/1.1 200 OK\r\n\r\n".getBytes());
+                } else if (httpURI.startsWith("/echo/")) {
+                    String restOfURI = httpURI.substring(6);
+                    String response = String.format(
+                            "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
+                            restOfURI.length(), restOfURI);
+                    outputStream.write(response.getBytes());
                 } else {
                     outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
                 }
