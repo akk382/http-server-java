@@ -4,10 +4,7 @@ import java.net.Socket;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -15,6 +12,7 @@ public class Main {
     public static void main(String[] args) {
         // You can use print statements as follows for debugging, they'll be visible when running tests.
         System.out.println("Logs from your program will appear here!");
+        File directory = getDirectory(args);
 
 
         try (ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
@@ -28,10 +26,21 @@ public class Main {
                 Socket client = serverSocket.accept();// Wait for connection from client.
                 System.out.println("accepted new connection");
 
-                executorService.submit(new RequestExecutor(client));
+                executorService.submit(new RequestExecutor(client, directory));
             }
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
         }
+    }
+
+    private static File getDirectory(String[] args) {
+        Iterator<String> iterator = Arrays.stream(args).iterator();
+        while (iterator.hasNext()) {
+            if (iterator.next().equals("--directory") && iterator.hasNext()) {
+                String path = iterator.next();
+                return new File(path);
+            }
+        }
+        return null;
     }
 }

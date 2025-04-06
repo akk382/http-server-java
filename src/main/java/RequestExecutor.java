@@ -9,11 +9,17 @@ import java.util.Optional;
 public class RequestExecutor implements Runnable {
 
     private Socket client;
+    private File directory;
 
     private RequestExecutor() {}
 
     public RequestExecutor(Socket clientSocket) {
         this.client = clientSocket;
+    }
+
+    public RequestExecutor(Socket clientSocket, File directory) {
+        this.client = clientSocket;
+        this.directory = directory;
     }
 
     @Override
@@ -54,6 +60,19 @@ public class RequestExecutor implements Runnable {
                                 userAgent.length(), userAgent);
                         outputStream.write(response.getBytes());
                     }
+                } else if (httpURI.startsWith("/files/")) {
+                    if (this.directory == null) {
+                        outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
+                    } else {
+                        String restOfUri = httpURI.substring("/files/".length());
+                        File file = new File(directory.getPath() + restOfUri);
+                        InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
+                        byte[] bytes = fileInputStream.readAllBytes();
+                        String response = String.format(
+                                "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
+                                bytes.length, new String(bytes, StandardCharsets.UTF_8));
+                        outputStream.write(response.getBytes());
+                    }
                 } else {
                     outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
                 }
@@ -61,6 +80,7 @@ public class RequestExecutor implements Runnable {
 
             client.close();
         } catch (IOException ex) {
+            System.out.println("Error occurred\n");
         }
 
 
