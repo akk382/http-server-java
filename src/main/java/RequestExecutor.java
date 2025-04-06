@@ -75,11 +75,15 @@ public class RequestExecutor implements Runnable {
                             "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
                             bytes.length, new String(bytes, StandardCharsets.UTF_8));
                     outputStream.write(response.getBytes());
+                    fileInputStream.close();
                 } else {
                     outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
                 }
             }
 
+            reader.close();
+            inputStream.close();
+            outputStream.close();
             client.close();
         } catch (IOException ex) {
             System.out.println("Error occurred\n");
@@ -87,8 +91,10 @@ public class RequestExecutor implements Runnable {
     }
 
     private void handleIfDirectoryNotFound(File directory, OutputStream outputStream) throws IOException {
-        outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
-        throw new IOException("Directory not found.\n");
+        if (!directory.exists()) {
+            outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
+            throw new IOException("Directory not found.\n");
+        }
     }
 
     private void handleIfFileNotFound(File file, OutputStream outputStream) throws IOException {
