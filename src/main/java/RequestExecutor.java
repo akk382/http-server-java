@@ -1,11 +1,4 @@
-import java.io.OutputStream;
-import java.io.File;
-import java.io.InputStream;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.BufferedInputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -50,7 +43,7 @@ public class RequestExecutor implements Runnable {
                 String httpVersion = requestLineParts[2];
 
                 boolean responded = handleBaseUri(httpURI) || handleEcho(httpURI)
-                        || handleUserAgent(httpURI, request) || handleFiles(httpURI);
+                        || handleUserAgent(httpURI, request) || handleFiles(httpURI, httpMethod, request, reader);
                 handleNotFound(responded);
             }
 
@@ -128,25 +121,62 @@ public class RequestExecutor implements Runnable {
         }
     }
 
-    private boolean handleFiles(String httpURI) throws IOException {
+    private boolean handleFiles(String httpURI, String httpMethod, List<String> request, BufferedReader reader) throws IOException {
         if (httpURI.startsWith("/files/")) {
             OutputStream outputStream = client.getOutputStream();
             handleIfDirectoryNotFound(directory, outputStream);
             String restOfUri = httpURI.substring("/files/".length());
             File file = new File(directory.getPath() + File.separator + restOfUri);
-            handleIfFileNotFound(file, outputStream);
-            System.out.println("File: " + file.getPath());
-            InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
-            byte[] bytes = fileInputStream.readAllBytes();
-            System.out.println("Response Body: " + new String(bytes, StandardCharsets.UTF_8));
-            String response = String.format(
-                    "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
-                    bytes.length, new String(bytes, StandardCharsets.UTF_8));
-            outputStream.write(response.getBytes());
-            fileInputStream.close();
-            outputStream.close();
-            return true;
+
+            switch (SupportedHTTPMethods.valueOf(httpMethod)) {
+                case GET -> {
+                    handleIfFileNotFound(file, outputStream);
+                    InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
+                    byte[] bytes = fileInputStream.readAllBytes();
+                    String response = String.format(
+                            "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
+                            bytes.length, new String(bytes, StandardCharsets.UTF_8));
+                    outputStream.write(response.getBytes());
+                    fileInputStream.close();
+                    outputStream.close();
+                    return true;
+                }
+                case POST -> {
+                    handleIfFileAlreadyExists(file, outputStream);
+                    if (!file.createNewFile()) {
+                        throw new IOException("Failed to create a new file.\n");
+                    }
+
+                    // extract the request body from the POST request.
+                    int contentLength = getContentLength(request);
+                    char[] buf = new char[contentLength];
+                    while (reader.read(buf) != -1);
+                    BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+                    writer.write(buf);
+                    writer.close();
+                    return true;
+                }
+                default -> handleNotFound(false);
+            }
+            throw new IOException("Failed request handling in handleFiles(String, String, List<String>).\n");
         }
         return false;
+    }
+
+    private int getContentLength(List<String> request) throws IOException {
+        Optional<String> contentLengthHeader = request.stream().filter(req -> req.startsWith("Content-Length: ")).findFirst();
+        if (contentLengthHeader.isPresent()) {
+            String contentLength = contentLengthHeader.get();
+            return Integer.parseInt(contentLength.substring("Content-Length: ".length()));
+        }
+        throw new IOException("Content-Length header is missing.\n");
+    }
+
+
+    // Deletes the existing file for now.
+    private void handleIfFileAlreadyExists(File file, OutputStream outputStream) {
+        if (file.exists()) {
+            file.delete();
+        }
     }
 }
