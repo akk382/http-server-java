@@ -153,10 +153,13 @@ public class RequestExecutor implements Runnable {
 
                     // extract the request body from the POST request.
                     int contentLength = getContentLength(request);
+                    System.out.println("Content-Length: " + contentLength);
                     char[] buf = new char[contentLength];
                     while (reader.read(buf) != -1);
+                    System.out.println("After buffer read");
                     BufferedWriter writer = new BufferedWriter(new FileWriter(file));
                     writer.write(buf);
+                    System.out.println("After buffer write");
                     writer.close();
                     return true;
                 }
