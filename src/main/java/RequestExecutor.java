@@ -122,9 +122,7 @@ public class RequestExecutor implements Runnable {
     }
 
     private boolean handleFiles(String httpURI, String httpMethod, List<String> request, BufferedReader reader) throws IOException {
-        System.out.println("Inside handleFiles()");
         if (httpURI.startsWith("/files/")) {
-            System.out.println("Inside if: ");
             OutputStream outputStream = client.getOutputStream();
             handleIfDirectoryNotFound(directory, outputStream);
             String restOfUri = httpURI.substring("/files/".length());
@@ -132,7 +130,6 @@ public class RequestExecutor implements Runnable {
 
             switch (SupportedHTTPMethods.valueOf(httpMethod)) {
                 case GET -> {
-                    System.out.println("Inside GET");
                     handleIfFileNotFound(file, outputStream);
                     InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
                     byte[] bytes = fileInputStream.readAllBytes();
@@ -145,7 +142,6 @@ public class RequestExecutor implements Runnable {
                     return true;
                 }
                 case POST -> {
-                    System.out.println("Inside POST");
                     handleIfFileAlreadyExists(file, outputStream);
                     if (!file.createNewFile()) {
                         throw new IOException("Failed to create a new file.\n");
@@ -153,16 +149,13 @@ public class RequestExecutor implements Runnable {
 
                     // extract the request body from the POST request.
                     int contentLength = getContentLength(request);
-                    System.out.println("Content-Length: " + contentLength);
                     char[] buf = new char[contentLength];
-                    int read = 0;
-                    while ((read = reader.read(buf)) != -1) {
-                        System.out.println("Read " + read + " bytes.");
+                    int read = reader.read(buf, 0, contentLength);
+                    if (read == -1 || (read == 0 && contentLength != 0)) {
+                        throw new IOException("Failed to read request body.\n");
                     }
-                    System.out.println("After buffer read");
                     BufferedWriter writer = new BufferedWriter(new FileWriter(file));
                     writer.write(buf);
-                    System.out.println("After buffer write");
                     writer.close();
                     return true;
                 }
@@ -174,7 +167,6 @@ public class RequestExecutor implements Runnable {
     }
 
     private int getContentLength(List<String> request) throws IOException {
-        System.out.println("Inside getContentLength");
         Optional<String> contentLengthHeader = request.stream().filter(req -> req.startsWith("Content-Length: ")).findFirst();
         if (contentLengthHeader.isPresent()) {
             String contentLength = contentLengthHeader.get();
