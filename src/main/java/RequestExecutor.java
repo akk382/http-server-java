@@ -155,7 +155,10 @@ public class RequestExecutor implements Runnable {
                     int contentLength = getContentLength(request);
                     System.out.println("Content-Length: " + contentLength);
                     char[] buf = new char[contentLength];
-                    while (reader.read(buf) != -1);
+                    int read = 0;
+                    while ((read = reader.read(buf)) != -1) {
+                        System.out.println("Read " + read + " bytes.");
+                    }
                     System.out.println("After buffer read");
                     BufferedWriter writer = new BufferedWriter(new FileWriter(file));
                     writer.write(buf);
