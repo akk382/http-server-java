@@ -122,7 +122,9 @@ public class RequestExecutor implements Runnable {
     }
 
     private boolean handleFiles(String httpURI, String httpMethod, List<String> request, BufferedReader reader) throws IOException {
+        System.out.println("Inside handleFiles()");
         if (httpURI.startsWith("/files/")) {
+            System.out.println("Inside if: ");
             OutputStream outputStream = client.getOutputStream();
             handleIfDirectoryNotFound(directory, outputStream);
             String restOfUri = httpURI.substring("/files/".length());
@@ -130,6 +132,7 @@ public class RequestExecutor implements Runnable {
 
             switch (SupportedHTTPMethods.valueOf(httpMethod)) {
                 case GET -> {
+                    System.out.println("Inside GET");
                     handleIfFileNotFound(file, outputStream);
                     InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
                     byte[] bytes = fileInputStream.readAllBytes();
@@ -142,6 +145,7 @@ public class RequestExecutor implements Runnable {
                     return true;
                 }
                 case POST -> {
+                    System.out.println("Inside POST");
                     handleIfFileAlreadyExists(file, outputStream);
                     if (!file.createNewFile()) {
                         throw new IOException("Failed to create a new file.\n");
@@ -164,6 +168,7 @@ public class RequestExecutor implements Runnable {
     }
 
     private int getContentLength(List<String> request) throws IOException {
+        System.out.println("Inside getContentLength");
         Optional<String> contentLengthHeader = request.stream().filter(req -> req.startsWith("Content-Length: ")).findFirst();
         if (contentLengthHeader.isPresent()) {
             String contentLength = contentLengthHeader.get();
