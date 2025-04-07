@@ -154,12 +154,11 @@ public class RequestExecutor implements Runnable {
                     if (read == -1 || (read == 0 && contentLength != 0)) {
                         throw new IOException("Failed to read request body.\n");
                     }
-                    System.out.println("Read " + read + " bytes");
                     BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-                    System.out.println("Writing bytes");
                     writer.write(buf);
-                    System.out.println("Written bytes to file " + file.getPath());
                     writer.close();
+                    outputStream.write("HTTP/1.1 201 Created\r\n\r\n".getBytes());
+                    outputStream.close();
                     return true;
                 }
                 default -> handleNotFound(false);
