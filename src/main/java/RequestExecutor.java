@@ -69,7 +69,7 @@ public class RequestExecutor implements Runnable {
         if (userAgentHeader.isPresent()) {
             String userAgent = userAgentHeader.get().substring("User-Agent: ".length());
             Encoding acceptedEncoding = getAcceptedEncoding(request);
-            String encodedResponseBody = Arrays.toString(encodeResponseBody(userAgent, acceptedEncoding));
+            byte[] encodedResponseBody = encodeResponseBody(userAgent, acceptedEncoding);
             String response = "HTTP/1.1 200 OK\r\n";
             if (acceptedEncoding != null) {
                 response += "Content-Encoding: " + acceptedEncoding + "\r\n";
@@ -88,7 +88,7 @@ public class RequestExecutor implements Runnable {
         if (httpURI.startsWith("/echo/")) {
             String restOfURI = httpURI.substring(6);
             Encoding acceptedEncoding = getAcceptedEncoding(request);
-            String encodedResponseBody = Arrays.toString(encodeResponseBody(restOfURI, acceptedEncoding));
+            byte[] encodedResponseBody = encodeResponseBody(restOfURI, acceptedEncoding);
             String response = "HTTP/1.1 200 OK\r\n";
             if (acceptedEncoding != null) {
                 response += "Content-Encoding: " + acceptedEncoding + "\r\n";
@@ -220,10 +220,13 @@ public class RequestExecutor implements Runnable {
 
     private byte[] encodeToGzip(String value) throws IOException {
         byte[] buf = value.getBytes();
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        GZIPOutputStream gzos = new GZIPOutputStream(baos);
-        gzos.write(buf, 0, buf.length);
-        return baos.toByteArray();
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             GZIPOutputStream gzos = new GZIPOutputStream(baos)) {
+            gzos.write(buf, 0, buf.length);
+            return baos.toByteArray();
+        } catch (IOException ex) {
+            throw ex;
+        }
     }
 
     private int getContentLength(List<String> request) throws IOException {
