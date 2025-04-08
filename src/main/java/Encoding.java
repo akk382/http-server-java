@@ -12,4 +12,9 @@ public enum Encoding {
         }
         return null;
     }
+
+    @Override
+    public String toString() {
+        return this.encodingType;
+    }
 }

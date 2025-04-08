@@ -74,9 +74,12 @@ public class RequestExecutor implements Runnable {
             String userAgent = userAgentHeader.get().substring("User-Agent: ".length());
             Encoding acceptedEncoding = getAcceptedEncoding(request);
             String encodedResponseBody = encodeResponseBody(userAgent, acceptedEncoding);
-            String response = String.format(
-                    "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
-                    userAgent.length(), encodedResponseBody);
+            String response = "HTTP/1.1 200 OK\r\n";
+            if (acceptedEncoding != null) {
+                response += "Content-Encoding: " + acceptedEncoding + "\r\n";
+            }
+            response += "Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s";
+            response = String.format(response, userAgent.length(), encodedResponseBody);
             OutputStream outputStream = client.getOutputStream();
             outputStream.write(response.getBytes());
             outputStream.close();
@@ -90,9 +93,12 @@ public class RequestExecutor implements Runnable {
             String restOfURI = httpURI.substring(6);
             Encoding acceptedEncoding = getAcceptedEncoding(request);
             String encodedResponseBody = encodeResponseBody(restOfURI, acceptedEncoding);
-            String response = String.format(
-                    "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
-                    restOfURI.length(), encodedResponseBody);
+            String response = "HTTP/1.1 200 OK\r\n";
+            if (acceptedEncoding != null) {
+                response += "Content-Encoding: " + acceptedEncoding + "\r\n";
+            }
+            response += "Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s";
+            response = String.format(response, restOfURI.length(), encodedResponseBody);
             OutputStream outputStream = client.getOutputStream();
             outputStream.write(response.getBytes());
             outputStream.close();
@@ -141,9 +147,12 @@ public class RequestExecutor implements Runnable {
                     byte[] bytes = fileInputStream.readAllBytes();
                     Encoding acceptedEncoding = getAcceptedEncoding(request);
                     String encodedResponseBody = encodeResponseBody(bytes, acceptedEncoding);
-                    String response = String.format(
-                            "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
-                            bytes.length, encodedResponseBody);
+                    String response = "HTTP/1.1 200 OK\r\n";
+                    if (acceptedEncoding != null) {
+                        response += "Content-Encoding: " + acceptedEncoding + "\r\n";
+                    }
+                    response += "Content-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s";
+                    response = String.format(response, bytes.length, encodedResponseBody);
                     outputStream.write(response.getBytes());
                     fileInputStream.close();
                     outputStream.close();
