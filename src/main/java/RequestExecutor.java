@@ -149,7 +149,7 @@ public class RequestExecutor implements Runnable {
                     if (acceptedEncoding != null) {
                         response += "Content-Encoding: " + acceptedEncoding + "\r\n";
                     }
-                    response += "Content-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s";
+                    response += "Content-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n";
                     response = String.format(response, encodedResponseBody.length);
                     outputStream.write(response.getBytes());
                     outputStream.write(encodedResponseBody);
