@@ -1,9 +1,9 @@
-enum SupportedHTTPMethods {
+enum HTTPMethods {
     GET("GET"), POST("POST");
 
     private final String methodString;
 
-    SupportedHTTPMethods(String methodString) {
+    HTTPMethods(String methodString) {
         this.methodString = methodString;
     }
 }

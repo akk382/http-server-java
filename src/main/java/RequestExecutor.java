@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 public class RequestExecutor implements Runnable {
 
@@ -42,7 +44,7 @@ public class RequestExecutor implements Runnable {
                 String httpURI = requestLineParts[1]; // URL / resource path
                 String httpVersion = requestLineParts[2];
 
-                boolean responded = handleBaseUri(httpURI) || handleEcho(httpURI)
+                boolean responded = handleBaseUri(httpURI) || handleEcho(httpURI, request)
                         || handleUserAgent(httpURI, request) || handleFiles(httpURI, httpMethod, request, reader);
                 handleNotFound(responded);
             }
@@ -70,9 +72,11 @@ public class RequestExecutor implements Runnable {
         Optional<String> userAgentHeader = request.stream().filter(req -> req.startsWith("User-Agent: ")).findFirst();
         if (userAgentHeader.isPresent()) {
             String userAgent = userAgentHeader.get().substring("User-Agent: ".length());
+            Encoding acceptedEncoding = getAcceptedEncoding(request);
+            String encodedResponseBody = encodeResponseBody(userAgent, acceptedEncoding);
             String response = String.format(
                     "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
-                    userAgent.length(), userAgent);
+                    userAgent.length(), encodedResponseBody);
             OutputStream outputStream = client.getOutputStream();
             outputStream.write(response.getBytes());
             outputStream.close();
@@ -81,12 +85,14 @@ public class RequestExecutor implements Runnable {
         return false;
     }
 
-    private boolean handleEcho(String httpURI) throws IOException {
+    private boolean handleEcho(String httpURI, List<String> request) throws IOException {
         if (httpURI.startsWith("/echo/")) {
             String restOfURI = httpURI.substring(6);
+            Encoding acceptedEncoding = getAcceptedEncoding(request);
+            String encodedResponseBody = encodeResponseBody(restOfURI, acceptedEncoding);
             String response = String.format(
                     "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
-                    restOfURI.length(), restOfURI);
+                    restOfURI.length(), encodedResponseBody);
             OutputStream outputStream = client.getOutputStream();
             outputStream.write(response.getBytes());
             outputStream.close();
@@ -128,14 +134,16 @@ public class RequestExecutor implements Runnable {
             String restOfUri = httpURI.substring("/files/".length());
             File file = new File(directory.getPath() + File.separator + restOfUri);
 
-            switch (SupportedHTTPMethods.valueOf(httpMethod)) {
+            switch (HTTPMethods.valueOf(httpMethod)) {
                 case GET -> {
                     handleIfFileNotFound(file, outputStream);
                     InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
                     byte[] bytes = fileInputStream.readAllBytes();
+                    Encoding acceptedEncoding = getAcceptedEncoding(request);
+                    String encodedResponseBody = encodeResponseBody(bytes, acceptedEncoding);
                     String response = String.format(
                             "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
-                            bytes.length, new String(bytes, StandardCharsets.UTF_8));
+                            bytes.length, encodedResponseBody);
                     outputStream.write(response.getBytes());
                     fileInputStream.close();
                     outputStream.close();
@@ -168,6 +176,46 @@ public class RequestExecutor implements Runnable {
         return false;
     }
 
+    // Deletes the existing file for now.
+    private void handleIfFileAlreadyExists(File file, OutputStream outputStream) {
+        if (file.exists()) {
+            file.delete();
+        }
+    }
+
+    /* Utility Methods */
+    private Encoding getAcceptedEncoding(List<String> request) {
+        Optional<String> acceptEncoding = request.stream()
+                .filter(req -> req.startsWith("Accept-Encoding")).findFirst();
+        if (acceptEncoding.isPresent()) {
+            String encodingType = acceptEncoding.get().substring("Accept-Encoding".length());
+            return Encoding.valueOf(encodingType);
+        }
+        return null;
+    }
+
+    private String encodeResponseBody(String unEncodedResponseBody, Encoding encodeType) throws IOException {
+        if (encodeType == null) {
+            return unEncodedResponseBody;
+        }
+        return switch (encodeType) {
+            case GZIP -> encodeToGzip(unEncodedResponseBody);
+        };
+    }
+
+    private String encodeResponseBody(byte[] unEncodedResponseBody, Encoding encodeType) throws IOException {
+        String unEncodedResponse = new String(unEncodedResponseBody, StandardCharsets.UTF_8);
+        return encodeResponseBody(unEncodedResponse, encodeType);
+    }
+
+    private String encodeToGzip(String value) throws IOException {
+        byte[] buf = value.getBytes();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        GZIPOutputStream gzos = new GZIPOutputStream(baos);
+        gzos.write(buf, 0, buf.length);
+        return baos.toString();
+    }
+
     private int getContentLength(List<String> request) throws IOException {
         Optional<String> contentLengthHeader = request.stream().filter(req -> req.startsWith("Content-Length: ")).findFirst();
         if (contentLengthHeader.isPresent()) {
@@ -175,13 +223,5 @@ public class RequestExecutor implements Runnable {
             return Integer.parseInt(contentLength.substring("Content-Length: ".length()));
         }
         throw new IOException("Content-Length header is missing.\n");
-    }
-
-
-    // Deletes the existing file for now.
-    private void handleIfFileAlreadyExists(File file, OutputStream outputStream) {
-        if (file.exists()) {
-            file.delete();
-        }
     }
 }
