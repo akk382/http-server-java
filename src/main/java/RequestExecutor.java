@@ -74,10 +74,11 @@ public class RequestExecutor implements Runnable {
             if (acceptedEncoding != null) {
                 response += "Content-Encoding: " + acceptedEncoding + "\r\n";
             }
-            response += "Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s";
-            response = String.format(response, userAgent.length(), encodedResponseBody);
+            response += "Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n";
+            response = String.format(response, encodedResponseBody.length);
             OutputStream outputStream = client.getOutputStream();
             outputStream.write(response.getBytes());
+            outputStream.write(encodedResponseBody);
             outputStream.close();
             return true;
         }
@@ -93,10 +94,11 @@ public class RequestExecutor implements Runnable {
             if (acceptedEncoding != null) {
                 response += "Content-Encoding: " + acceptedEncoding + "\r\n";
             }
-            response += "Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s";
-            response = String.format(response, restOfURI.length(), encodedResponseBody);
+            response += "Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n";
+            response = String.format(response, encodedResponseBody.length);
             OutputStream outputStream = client.getOutputStream();
             outputStream.write(response.getBytes());
+            outputStream.write(encodedResponseBody);
             outputStream.close();
             return true;
         }
@@ -148,8 +150,9 @@ public class RequestExecutor implements Runnable {
                         response += "Content-Encoding: " + acceptedEncoding + "\r\n";
                     }
                     response += "Content-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s";
-                    response = String.format(response, bytes.length, encodedResponseBody);
+                    response = String.format(response, encodedResponseBody.length);
                     outputStream.write(response.getBytes());
+                    outputStream.write(encodedResponseBody);
                     fileInputStream.close();
                     outputStream.close();
                     return true;
