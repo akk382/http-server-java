@@ -223,13 +223,13 @@ public class RequestExecutor implements Runnable {
 
     private byte[] encodeToGzip(String value) throws IOException {
         byte[] buf = value.getBytes();
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-             GZIPOutputStream gzos = new GZIPOutputStream(baos)) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (GZIPOutputStream gzos = new GZIPOutputStream(baos)) {
             gzos.write(buf, 0, buf.length);
-            return baos.toByteArray();
         } catch (IOException ex) {
             throw ex;
         }
+        return baos.toByteArray();
     }
 
     private int getContentLength(List<String> request) throws IOException {
