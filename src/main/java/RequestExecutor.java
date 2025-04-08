@@ -194,6 +194,7 @@ public class RequestExecutor implements Runnable {
             System.out.println("Received " + acceptEncoding.get());
             String encodingType = acceptEncoding.get().substring("Accept-Encoding: ".length());
             System.out.println("Accept-Encoding: " + encodingType);
+            System.out.println(Encoding.valueOf(encodingType));
             return Encoding.valueOf(encodingType);
         }
         return null;
