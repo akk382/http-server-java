@@ -188,7 +188,7 @@ public class RequestExecutor implements Runnable {
         Optional<String> acceptEncoding = request.stream()
                 .filter(req -> req.startsWith("Accept-Encoding")).findFirst();
         if (acceptEncoding.isPresent()) {
-            String encodingType = acceptEncoding.get().substring("Accept-Encoding".length());
+            String encodingType = acceptEncoding.get().substring("Accept-Encoding: ".length());
             return Encoding.valueOf(encodingType);
         }
         return null;
