@@ -88,10 +88,8 @@ public class RequestExecutor implements Runnable {
     private boolean handleEcho(String httpURI, List<String> request) throws IOException {
         if (httpURI.startsWith("/echo/")) {
             String restOfURI = httpURI.substring(6);
-            System.out.println("Rest of URI: " + restOfURI);
             Encoding acceptedEncoding = getAcceptedEncoding(request);
             String encodedResponseBody = encodeResponseBody(restOfURI, acceptedEncoding);
-            System.out.println("Encoded Response: " + encodedResponseBody);
             String response = String.format(
                     "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
                     restOfURI.length(), encodedResponseBody);
@@ -191,17 +189,13 @@ public class RequestExecutor implements Runnable {
                 .filter(req -> req.startsWith("Accept-Encoding")).findFirst();
 
         if (acceptEncoding.isPresent()) {
-            System.out.println("Received " + acceptEncoding.get());
             String encodingType = acceptEncoding.get().substring("Accept-Encoding: ".length());
-            System.out.println("Accept-Encoding: " + encodingType);
-            System.out.println(Encoding.valueOf(encodingType));
-            return Encoding.valueOf(encodingType);
+            return Encoding.fromString(encodingType);
         }
         return null;
     }
 
     private String encodeResponseBody(String unEncodedResponseBody, Encoding encodeType) throws IOException {
-        System.out.println("Inside encodeResponseBody()");
         if (encodeType == null) {
             return unEncodedResponseBody;
         }
@@ -216,12 +210,10 @@ public class RequestExecutor implements Runnable {
     }
 
     private String encodeToGzip(String value) throws IOException {
-        System.out.println("Encoding to Gzip compression");
         byte[] buf = value.getBytes();
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         GZIPOutputStream gzos = new GZIPOutputStream(baos);
         gzos.write(buf, 0, buf.length);
-        System.out.println("Compressed to Gzip: " + baos);
         return baos.toString();
     }
 
