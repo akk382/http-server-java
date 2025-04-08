@@ -195,7 +195,7 @@ public class RequestExecutor implements Runnable {
                 .filter(req -> req.startsWith("Accept-Encoding")).findFirst()
                 .map(acceptEncoding -> {
                     String[] encodingTypes = acceptEncoding.substring("Accept-Encoding: ".length()).split(",");
-                    List<String> receivedEncodes = Arrays.stream(encodingTypes).toList();
+                    List<String> receivedEncodes = Arrays.stream(encodingTypes).map(String::strip).toList();
                     for (Encoding encoding : Encoding.values()) {
                         if (receivedEncodes.contains(encoding.toString())) {
                             return encoding;
