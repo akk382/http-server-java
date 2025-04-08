@@ -13,7 +13,6 @@ public class Main {
         System.out.println("Logs from your program will appear here!");
         File directory = getDirectory(args);
 
-
         try (ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
              ServerSocket serverSocket = new ServerSocket(4221)) {
             serverSocket.setReuseAddress(true);

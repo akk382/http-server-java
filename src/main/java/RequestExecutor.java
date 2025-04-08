@@ -1,10 +1,7 @@
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -194,14 +191,18 @@ public class RequestExecutor implements Runnable {
 
     /* Utility Methods */
     private Encoding getAcceptedEncoding(List<String> request) {
-        Optional<String> acceptEncoding = request.stream()
-                .filter(req -> req.startsWith("Accept-Encoding")).findFirst();
-
-        if (acceptEncoding.isPresent()) {
-            String encodingType = acceptEncoding.get().substring("Accept-Encoding: ".length());
-            return Encoding.fromString(encodingType);
-        }
-        return null;
+        return request.stream()
+                .filter(req -> req.startsWith("Accept-Encoding")).findFirst()
+                .map(acceptEncoding -> {
+                    String[] encodingTypes = acceptEncoding.substring("Accept-Encoding: ".length()).split(",");
+                    List<String> receivedEncodes = Arrays.stream(encodingTypes).toList();
+                    for (Encoding encoding : Encoding.values()) {
+                        if (receivedEncodes.contains(encoding.toString())) {
+                            return encoding;
+                        }
+                    }
+                    return null;
+                }).orElse(null);
     }
 
     private String encodeResponseBody(String unEncodedResponseBody, Encoding encodeType) throws IOException {

@@ -1,5 +1,6 @@
 enum HTTPMethods {
-    GET("GET"), POST("POST");
+    GET("GET"),
+    POST("POST");
 
     private final String methodString;
 
