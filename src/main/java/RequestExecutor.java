@@ -2,7 +2,6 @@ import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 public class RequestExecutor implements Runnable {
@@ -70,7 +69,7 @@ public class RequestExecutor implements Runnable {
         if (userAgentHeader.isPresent()) {
             String userAgent = userAgentHeader.get().substring("User-Agent: ".length());
             Encoding acceptedEncoding = getAcceptedEncoding(request);
-            String encodedResponseBody = encodeResponseBody(userAgent, acceptedEncoding);
+            String encodedResponseBody = Arrays.toString(encodeResponseBody(userAgent, acceptedEncoding));
             String response = "HTTP/1.1 200 OK\r\n";
             if (acceptedEncoding != null) {
                 response += "Content-Encoding: " + acceptedEncoding + "\r\n";
@@ -89,7 +88,7 @@ public class RequestExecutor implements Runnable {
         if (httpURI.startsWith("/echo/")) {
             String restOfURI = httpURI.substring(6);
             Encoding acceptedEncoding = getAcceptedEncoding(request);
-            String encodedResponseBody = encodeResponseBody(restOfURI, acceptedEncoding);
+            String encodedResponseBody = Arrays.toString(encodeResponseBody(restOfURI, acceptedEncoding));
             String response = "HTTP/1.1 200 OK\r\n";
             if (acceptedEncoding != null) {
                 response += "Content-Encoding: " + acceptedEncoding + "\r\n";
@@ -143,7 +142,7 @@ public class RequestExecutor implements Runnable {
                     InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
                     byte[] bytes = fileInputStream.readAllBytes();
                     Encoding acceptedEncoding = getAcceptedEncoding(request);
-                    String encodedResponseBody = encodeResponseBody(bytes, acceptedEncoding);
+                    byte[] encodedResponseBody = encodeResponseBody(bytes, acceptedEncoding);
                     String response = "HTTP/1.1 200 OK\r\n";
                     if (acceptedEncoding != null) {
                         response += "Content-Encoding: " + acceptedEncoding + "\r\n";
@@ -205,26 +204,26 @@ public class RequestExecutor implements Runnable {
                 }).orElse(null);
     }
 
-    private String encodeResponseBody(String unEncodedResponseBody, Encoding encodeType) throws IOException {
+    private byte[] encodeResponseBody(String unEncodedResponseBody, Encoding encodeType) throws IOException {
         if (encodeType == null) {
-            return unEncodedResponseBody;
+            return unEncodedResponseBody.getBytes();
         }
         return switch (encodeType) {
             case GZIP -> encodeToGzip(unEncodedResponseBody);
         };
     }
 
-    private String encodeResponseBody(byte[] unEncodedResponseBody, Encoding encodeType) throws IOException {
+    private byte[] encodeResponseBody(byte[] unEncodedResponseBody, Encoding encodeType) throws IOException {
         String unEncodedResponse = new String(unEncodedResponseBody, StandardCharsets.UTF_8);
         return encodeResponseBody(unEncodedResponse, encodeType);
     }
 
-    private String encodeToGzip(String value) throws IOException {
+    private byte[] encodeToGzip(String value) throws IOException {
         byte[] buf = value.getBytes();
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         GZIPOutputStream gzos = new GZIPOutputStream(baos);
         gzos.write(buf, 0, buf.length);
-        return baos.toString();
+        return baos.toByteArray();
     }
 
     private int getContentLength(List<String> request) throws IOException {
