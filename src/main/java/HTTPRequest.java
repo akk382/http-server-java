@@ -57,6 +57,9 @@ public class HTTPRequest {
     }
 
     public String getRequestHeader(RequestHeader requestHeader) {
+        if (this.requestHeaderMap == null) {
+            return null;
+        }
         return this.requestHeaderMap.getOrDefault(requestHeader, null);
     }
 }

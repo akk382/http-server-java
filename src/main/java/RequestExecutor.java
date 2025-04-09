@@ -30,8 +30,8 @@ public class RequestExecutor implements Runnable {
             InputStream inputStream = client.getInputStream();
             httpRequest = RequestParser.parse(inputStream);
 
-            boolean responded = handleBaseUri();
-//                    || handleEcho() || handleUserAgent() || handleFiles();
+            boolean responded = handleBaseUri() || handleEcho();
+//            || handleUserAgent() || handleFiles();
             handleNotFound(responded);
 
             inputStream.close();
@@ -74,25 +74,27 @@ public class RequestExecutor implements Runnable {
         return true;
     }
 
-//    private boolean handleEcho() throws IOException {
-//        if (httpRequest.getUri().startsWith("/echo/")) {
-//            String restOfURI = httpRequest.getUri().substring(6);
-//            Encoding acceptedEncoding = getAcceptedEncoding(request);
-//            byte[] encodedResponseBody = encodeResponseBody(restOfURI, acceptedEncoding);
-//            String response = "HTTP/1.1 200 OK" + "\r\n";
-//            if (acceptedEncoding != null) {
-//                response += "Content-Encoding: " + acceptedEncoding + HTTPConstants.LINE_SEPARATOR;
-//            }
-//            response += "Content-Type: text/plain" + HTTPConstants.LINE_SEPARATOR + "Content-Length: %d" + HTTPConstants.LINE_SEPARATOR + HTTPConstants.LINE_SEPARATOR;
-//            response = String.format(response, encodedResponseBody.length);
-//            OutputStream outputStream = client.getOutputStream();
-//            outputStream.write(response.getBytes());
-//            outputStream.write(encodedResponseBody);
-//            outputStream.close();
-//            return true;
-//        }
-//        return false;
-//    }
+    private boolean handleEcho() throws IOException {
+        if (httpRequest.getUri().startsWith(SupportedURIs.ECHO.value())) {
+            String restOfURI = httpRequest.getUri().substring(SupportedURIs.ECHO.value().length());
+            Encoding acceptedEncoding = Encoding.fromString(httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING));
+            byte[] encodedResponseBody = encodeResponseBody(restOfURI, acceptedEncoding);
+            HTTPResponseBuilder builder = HTTPResponseBuilder.builder()
+                    .setVersion(HTTPVersion.HTTP1_1)
+                    .setStatusCode(HTTPStatusCode.OK)
+                    .addResponseHeader(ResponseHeader.CONTENT_TYPE, ContentType.TEXT_PLAIN.value())
+                    .addResponseHeader(ResponseHeader.CONTENT_LENGTH, String.valueOf(encodedResponseBody.length))
+                    .setResponseBody(encodedResponseBody);
+            if (acceptedEncoding != null) {
+                builder.addResponseHeader(ResponseHeader.CONTENT_ENCODING, acceptedEncoding.value());
+            }
+            HTTPResponse response = builder.build();
+            HTTPOutputStream outputStream = new HTTPOutputStream(client.getOutputStream());
+            outputStream.write(response);
+            return true;
+        }
+        return false;
+    }
 
     private boolean handleBaseUri() throws IOException {
         if (httpRequest.getUri().isEmpty() || httpRequest.getUri().equals(SupportedURIs.BASE_URL.value())) {

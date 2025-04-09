@@ -1,13 +1,11 @@
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 public class HTTPResponse {
     // status line
     private HTTPVersion version;
     private HTTPStatusCode statusCode;
-    private List<ResponseHeader> responseHeaders;
-    private Optional<ResponseBody> responseBody;
+    private Map<ResponseHeader, String> responseHeaderMap;
+    private byte[] responseBody;
 
     public HTTPVersion getVersion() {
         return version;
@@ -25,22 +23,29 @@ public class HTTPResponse {
         this.statusCode = statusCode;
     }
 
-    public List<ResponseHeader> getResponseHeaders() {
-        if (this.responseHeaders == null) {
-            return new ArrayList<>();
+    public Map<ResponseHeader, String> getResponseHeaderMap() {
+        if (this.responseHeaderMap == null) {
+            this.responseHeaderMap = new HashMap<>();
         }
-        return responseHeaders;
+        return responseHeaderMap;
     }
 
-    public void setResponseHeaders(List<ResponseHeader> responseHeaders) {
-        this.responseHeaders = responseHeaders;
+    public void setResponseHeaderMap(Map<ResponseHeader, String> responseHeaderMap) {
+        this.responseHeaderMap = responseHeaderMap;
     }
 
-    public Optional<ResponseBody> getResponseBody() {
+    public void addResponseHeader(ResponseHeader responseHeader, String value) {
+        if (this.responseHeaderMap == null) {
+            this.responseHeaderMap = new HashMap<>();
+        }
+        this.responseHeaderMap.put(responseHeader, value);
+    }
+
+    public byte[] getResponseBody() {
         return responseBody;
     }
 
-    public void setResponseBody(ResponseBody responseBody) {
-        this.responseBody = Optional.ofNullable(responseBody);
+    public void setResponseBody(byte[] responseBody) {
+        this.responseBody = responseBody;
     }
 }
