@@ -30,8 +30,8 @@ public class RequestExecutor implements Runnable {
             InputStream inputStream = client.getInputStream();
             httpRequest = RequestParser.parse(inputStream);
 
-            boolean responded = handleBaseUri() || handleEcho();
-//            || handleUserAgent() || handleFiles();
+            boolean responded = handleBaseUri() || handleEcho() || handleUserAgent();
+//            || handleFiles();
             handleNotFound(responded);
 
             inputStream.close();
@@ -53,30 +53,32 @@ public class RequestExecutor implements Runnable {
     }
 
     private boolean handleUserAgent() throws IOException {
-        if (!httpRequest.getUri().startsWith("/user-agent")) {
+        if (!httpRequest.getUri().startsWith(SupportedURIs.USER_AGENT.value())) {
             return false;
         }
-        String userAgentHeader = httpRequest.getRequestHeader(RequestHeader.USER_AGENT);
-        String userAgent = userAgentHeader.substring("User-Agent: ".length());
+        String userAgent = httpRequest.getRequestHeader(RequestHeader.USER_AGENT);
         Encoding acceptedEncoding = Encoding.fromString(
                 httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING));
         byte[] encodedResponseBody = encodeResponseBody(userAgent, acceptedEncoding);
-        String response = "HTTP/1.1 200 OK" + "\r\n";
+        HTTPResponseBuilder builder = HTTPResponseBuilder.builder()
+                .setVersion(HTTPVersion.HTTP1_1)
+                .setStatusCode(HTTPStatusCode.OK)
+                .addResponseHeader(ResponseHeader.CONTENT_TYPE, ContentType.TEXT_PLAIN.value())
+                .addResponseHeader(ResponseHeader.CONTENT_LENGTH, String.valueOf(encodedResponseBody.length))
+                .setResponseBody(encodedResponseBody);
         if (acceptedEncoding != null) {
-            response += HeaderPrefix.getHeaderPrefix(ResponseHeader.CONTENT_ENCODING) + acceptedEncoding + HTTPConstants.LINE_SEPARATOR;
+            builder.addResponseHeader(ResponseHeader.CONTENT_ENCODING, acceptedEncoding.value());
         }
-        response += "Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n";
-        response = String.format(response, encodedResponseBody.length);
-        OutputStream outputStream = client.getOutputStream();
-        outputStream.write(response.getBytes());
-        outputStream.write(encodedResponseBody);
-        outputStream.close();
+        HTTPResponse response = builder.build();
+        HTTPOutputStream outputStream = new HTTPOutputStream(client.getOutputStream());
+        outputStream.write(response);
         return true;
     }
 
     private boolean handleEcho() throws IOException {
         if (httpRequest.getUri().startsWith(SupportedURIs.ECHO.value())) {
             String restOfURI = httpRequest.getUri().substring(SupportedURIs.ECHO.value().length());
+            // TODO: support multiple encodings
             Encoding acceptedEncoding = Encoding.fromString(httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING));
             byte[] encodedResponseBody = encodeResponseBody(restOfURI, acceptedEncoding);
             HTTPResponseBuilder builder = HTTPResponseBuilder.builder()
@@ -207,6 +209,7 @@ public class RequestExecutor implements Runnable {
         return encodeResponseBody(unEncodedResponse, encodeType);
     }
 
+    // TODO: move to enum
     private byte[] encodeToGzip(String value) throws IOException {
         byte[] buf = value.getBytes();
         ByteArrayOutputStream baos = new ByteArrayOutputStream();

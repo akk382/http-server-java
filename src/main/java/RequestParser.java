@@ -24,6 +24,7 @@ public class RequestParser {
             throw new IOException("Empty HTTP request received");
         }
 
+        // TODO: validate the http request
         try {
             HTTPRequestValidator.validate(requestWithoutBody);
         } catch (RuntimeException ex) {
