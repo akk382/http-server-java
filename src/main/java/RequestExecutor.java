@@ -2,12 +2,14 @@ import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.zip.GZIPOutputStream;
 
 public class RequestExecutor implements Runnable {
 
     private Socket client;
     private File directory;
+    private HTTPRequest httpRequest;
 
     private RequestExecutor() {
     }
@@ -24,92 +26,82 @@ public class RequestExecutor implements Runnable {
     @Override
     public void run() {
         try {
-            List<String> request = new ArrayList<>();
-            String message;
+
             InputStream inputStream = client.getInputStream();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-            while (!Objects.equals(message = reader.readLine(), "")) {
-                request.add(message);
-            }
+            httpRequest = RequestParser.parse(inputStream);
 
-            if (!request.isEmpty()) {
-                String requestLine = request.getFirst();
+            boolean responded = handleBaseUri();
+//                    || handleEcho() || handleUserAgent() || handleFiles();
+            handleNotFound(responded);
 
-                String[] requestLineParts = requestLine.split(" ");
-                String httpMethod = requestLineParts[0];
-                String httpURI = requestLineParts[1]; // URL / resource path
-                String httpVersion = requestLineParts[2];
-
-                boolean responded = handleBaseUri(httpURI) || handleEcho(httpURI, request)
-                        || handleUserAgent(httpURI, request) || handleFiles(httpURI, httpMethod, request, reader);
-                handleNotFound(responded);
-            }
-
-            reader.close();
             inputStream.close();
             client.close();
         } catch (IOException ex) {
-            System.out.println("Error occurred\n");
+            System.out.println("Error occurred: \n" + ex.getMessage());
         }
     }
 
     private void handleNotFound(boolean responded) throws IOException {
         if (!responded) {
-            OutputStream outputStream = client.getOutputStream();
-            outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
-            outputStream.close();
+            HTTPOutputStream outputStream = new HTTPOutputStream(client.getOutputStream());
+            HTTPResponse response = HTTPResponseBuilder.builder()
+                    .setVersion(HTTPVersion.HTTP1_1)
+                    .setStatusCode(HTTPStatusCode.NOT_FOUND)
+                    .build();
+            outputStream.write(response);
         }
     }
 
-    private boolean handleUserAgent(String httpURI, List<String> request) throws IOException {
-        if (!httpURI.startsWith("/user-agent")) {
+    private boolean handleUserAgent() throws IOException {
+        if (!httpRequest.getUri().startsWith("/user-agent")) {
             return false;
         }
-        Optional<String> userAgentHeader = request.stream().filter(req -> req.startsWith("User-Agent: ")).findFirst();
-        if (userAgentHeader.isPresent()) {
-            String userAgent = userAgentHeader.get().substring("User-Agent: ".length());
-            Encoding acceptedEncoding = getAcceptedEncoding(request);
-            byte[] encodedResponseBody = encodeResponseBody(userAgent, acceptedEncoding);
-            String response = "HTTP/1.1 200 OK\r\n";
-            if (acceptedEncoding != null) {
-                response += "Content-Encoding: " + acceptedEncoding + "\r\n";
-            }
-            response += "Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n";
-            response = String.format(response, encodedResponseBody.length);
-            OutputStream outputStream = client.getOutputStream();
-            outputStream.write(response.getBytes());
-            outputStream.write(encodedResponseBody);
-            outputStream.close();
-            return true;
+        String userAgentHeader = httpRequest.getRequestHeader(RequestHeader.USER_AGENT);
+        String userAgent = userAgentHeader.substring("User-Agent: ".length());
+        Encoding acceptedEncoding = Encoding.fromString(
+                httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING));
+        byte[] encodedResponseBody = encodeResponseBody(userAgent, acceptedEncoding);
+        String response = "HTTP/1.1 200 OK" + "\r\n";
+        if (acceptedEncoding != null) {
+            response += HeaderPrefix.getHeaderPrefix(ResponseHeader.CONTENT_ENCODING) + acceptedEncoding + HTTPConstants.LINE_SEPARATOR;
         }
-        return false;
+        response += "Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n";
+        response = String.format(response, encodedResponseBody.length);
+        OutputStream outputStream = client.getOutputStream();
+        outputStream.write(response.getBytes());
+        outputStream.write(encodedResponseBody);
+        outputStream.close();
+        return true;
     }
 
-    private boolean handleEcho(String httpURI, List<String> request) throws IOException {
-        if (httpURI.startsWith("/echo/")) {
-            String restOfURI = httpURI.substring(6);
-            Encoding acceptedEncoding = getAcceptedEncoding(request);
-            byte[] encodedResponseBody = encodeResponseBody(restOfURI, acceptedEncoding);
-            String response = "HTTP/1.1 200 OK\r\n";
-            if (acceptedEncoding != null) {
-                response += "Content-Encoding: " + acceptedEncoding + "\r\n";
-            }
-            response += "Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n";
-            response = String.format(response, encodedResponseBody.length);
-            OutputStream outputStream = client.getOutputStream();
-            outputStream.write(response.getBytes());
-            outputStream.write(encodedResponseBody);
-            outputStream.close();
-            return true;
-        }
-        return false;
-    }
+//    private boolean handleEcho() throws IOException {
+//        if (httpRequest.getUri().startsWith("/echo/")) {
+//            String restOfURI = httpRequest.getUri().substring(6);
+//            Encoding acceptedEncoding = getAcceptedEncoding(request);
+//            byte[] encodedResponseBody = encodeResponseBody(restOfURI, acceptedEncoding);
+//            String response = "HTTP/1.1 200 OK" + "\r\n";
+//            if (acceptedEncoding != null) {
+//                response += "Content-Encoding: " + acceptedEncoding + HTTPConstants.LINE_SEPARATOR;
+//            }
+//            response += "Content-Type: text/plain" + HTTPConstants.LINE_SEPARATOR + "Content-Length: %d" + HTTPConstants.LINE_SEPARATOR + HTTPConstants.LINE_SEPARATOR;
+//            response = String.format(response, encodedResponseBody.length);
+//            OutputStream outputStream = client.getOutputStream();
+//            outputStream.write(response.getBytes());
+//            outputStream.write(encodedResponseBody);
+//            outputStream.close();
+//            return true;
+//        }
+//        return false;
+//    }
 
-    private boolean handleBaseUri(String httpURI) throws IOException {
-        if (httpURI.isEmpty() || httpURI.equals("/")) {
-            OutputStream outputStream = client.getOutputStream();
-            outputStream.write("HTTP/1.1 200 OK\r\n\r\n".getBytes());
-            outputStream.close();
+    private boolean handleBaseUri() throws IOException {
+        if (httpRequest.getUri().isEmpty() || httpRequest.getUri().equals(SupportedURIs.BASE_URL.value())) {
+            HTTPResponse response = HTTPResponseBuilder.builder()
+                    .setVersion(HTTPVersion.HTTP1_1)
+                    .setStatusCode(HTTPStatusCode.OK)
+                    .build();
+            HTTPOutputStream outputStream = new HTTPOutputStream(client.getOutputStream());
+            outputStream.write(response);
             return true;
         }
         return false;
@@ -117,7 +109,7 @@ public class RequestExecutor implements Runnable {
 
     private void handleIfDirectoryNotFound(File directory, OutputStream outputStream) throws IOException {
         if (!directory.exists()) {
-            outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
+            outputStream.write(("HTTP/1.1 404 Not Found" + HTTPConstants.LINE_SEPARATOR + HTTPConstants.LINE_SEPARATOR).getBytes());
             outputStream.close();
             throw new IOException("Directory not found.\n");
         }
@@ -125,31 +117,31 @@ public class RequestExecutor implements Runnable {
 
     private void handleIfFileNotFound(File file, OutputStream outputStream) throws IOException {
         if (!file.exists()) {
-            outputStream.write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
+            outputStream.write(("HTTP/1.1 404 Not Found" + HTTPConstants.LINE_SEPARATOR + HTTPConstants.LINE_SEPARATOR).getBytes());
             outputStream.close();
             throw new IOException("File not found.\n");
         }
     }
 
-    private boolean handleFiles(String httpURI, String httpMethod, List<String> request, BufferedReader reader) throws IOException {
-        if (httpURI.startsWith("/files/")) {
+    private boolean handleFiles() throws IOException, ExecutionException, InterruptedException {
+        if (httpRequest.getUri().startsWith("/files/")) {
             OutputStream outputStream = client.getOutputStream();
             handleIfDirectoryNotFound(directory, outputStream);
-            String restOfUri = httpURI.substring("/files/".length());
+            String restOfUri = httpRequest.getUri().substring("/files/".length());
             File file = new File(directory.getPath() + File.separator + restOfUri);
 
-            switch (HTTPMethods.valueOf(httpMethod)) {
+            switch (httpRequest.getMethod()) {
                 case GET -> {
                     handleIfFileNotFound(file, outputStream);
                     InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
                     byte[] bytes = fileInputStream.readAllBytes();
-                    Encoding acceptedEncoding = getAcceptedEncoding(request);
+                    Encoding acceptedEncoding = Encoding.fromString(httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING));
                     byte[] encodedResponseBody = encodeResponseBody(bytes, acceptedEncoding);
-                    String response = "HTTP/1.1 200 OK\r\n";
+                    String response = "HTTP/1.1 200 OK" + HTTPConstants.LINE_SEPARATOR;
                     if (acceptedEncoding != null) {
-                        response += "Content-Encoding: " + acceptedEncoding + "\r\n";
+                        response += "Content-Encoding: " + acceptedEncoding + HTTPConstants.LINE_SEPARATOR;
                     }
-                    response += "Content-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n";
+                    response += "Content-Type: application/octet-stream" + HTTPConstants.LINE_SEPARATOR + "Content-Length: %d" + HTTPConstants.LINE_SEPARATOR + HTTPConstants.LINE_SEPARATOR;
                     response = String.format(response, encodedResponseBody.length);
                     outputStream.write(response.getBytes());
                     outputStream.write(encodedResponseBody);
@@ -162,18 +154,10 @@ public class RequestExecutor implements Runnable {
                     if (!file.createNewFile()) {
                         throw new IOException("Failed to create a new file.\n");
                     }
-
-                    // extract the request body from the POST request.
-                    int contentLength = getContentLength(request);
-                    char[] buf = new char[contentLength];
-                    int read = reader.read(buf, 0, contentLength);
-                    if (read == -1 || (read == 0 && contentLength != 0)) {
-                        throw new IOException("Failed to read request body.\n");
-                    }
                     BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-                    writer.write(buf);
+                    writer.write(httpRequest.getRequestBody().getBody());
                     writer.close();
-                    outputStream.write("HTTP/1.1 201 Created\r\n\r\n".getBytes());
+                    outputStream.write(("HTTP/1.1 201 Created" + HTTPConstants.LINE_SEPARATOR + HTTPConstants.LINE_SEPARATOR).getBytes());
                     outputStream.close();
                     return true;
                 }

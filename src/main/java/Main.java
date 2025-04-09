@@ -8,11 +8,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Main {
+    private volatile boolean running = true;
     public static void main(String[] args) {
         // You can use print statements as follows for debugging, they'll be visible when running tests.
         System.out.println("Logs from your program will appear here!");
         File directory = getDirectory(args);
+        Main server = new Main();
+        server.start(directory);
+    }
 
+    public void start(File directory) {
         try (ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
              ServerSocket serverSocket = new ServerSocket(4221)) {
             serverSocket.setReuseAddress(true);
@@ -20,7 +25,7 @@ public class Main {
             // Since the tester restarts your program quite often, setting SO_REUSEADDR
             // ensures that we don't run into 'Address already in use' errors
 
-            while (true) {
+            while (running) {
                 Socket client = serverSocket.accept();// Wait for connection from client.
                 System.out.println("accepted new connection");
 
@@ -29,6 +34,10 @@ public class Main {
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
         }
+    }
+
+    public void stop() {
+        this.running = false;
     }
 
     private static File getDirectory(String[] args) {

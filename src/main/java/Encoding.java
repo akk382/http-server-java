@@ -13,6 +13,10 @@ public enum Encoding {
         return null;
     }
 
+    public String value() {
+        return encodingType;
+    }
+
     @Override
     public String toString() {
         return this.encodingType;
