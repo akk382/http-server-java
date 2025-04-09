@@ -2,7 +2,6 @@ import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.zip.GZIPOutputStream;
 
 public class RequestExecutor implements Runnable {
@@ -30,8 +29,7 @@ public class RequestExecutor implements Runnable {
             InputStream inputStream = client.getInputStream();
             httpRequest = RequestParser.parse(inputStream);
 
-            boolean responded = handleBaseUri() || handleEcho() || handleUserAgent();
-//            || handleFiles();
+            boolean responded = handleBaseUri() || handleEcho() || handleUserAgent() || handleFiles();
             handleNotFound(responded);
 
             inputStream.close();
@@ -111,58 +109,51 @@ public class RequestExecutor implements Runnable {
         return false;
     }
 
-    private void handleIfDirectoryNotFound(File directory, OutputStream outputStream) throws IOException {
+    private void handleIfDirectoryNotFound(File directory) throws IOException {
         if (!directory.exists()) {
-            outputStream.write(("HTTP/1.1 404 Not Found" + HTTPConstants.LINE_SEPARATOR + HTTPConstants.LINE_SEPARATOR).getBytes());
-            outputStream.close();
+            handleNotFound(false);
             throw new IOException("Directory not found.\n");
         }
     }
 
-    private void handleIfFileNotFound(File file, OutputStream outputStream) throws IOException {
+    private void handleIfFileNotFound(File file) throws IOException {
         if (!file.exists()) {
-            outputStream.write(("HTTP/1.1 404 Not Found" + HTTPConstants.LINE_SEPARATOR + HTTPConstants.LINE_SEPARATOR).getBytes());
-            outputStream.close();
+            handleNotFound(false);
             throw new IOException("File not found.\n");
         }
     }
 
-    private boolean handleFiles() throws IOException, ExecutionException, InterruptedException {
-        if (httpRequest.getUri().startsWith("/files/")) {
-            OutputStream outputStream = client.getOutputStream();
-            handleIfDirectoryNotFound(directory, outputStream);
-            String restOfUri = httpRequest.getUri().substring("/files/".length());
+    private boolean handleFiles() throws IOException {
+        if (httpRequest.getUri().startsWith(SupportedURIs.FILES.value())) {
+            handleIfDirectoryNotFound(directory);
+            String restOfUri = httpRequest.getUri().substring(SupportedURIs.FILES.value().length());
             File file = new File(directory.getPath() + File.separator + restOfUri);
+            HTTPOutputStream outputStream = new HTTPOutputStream(client.getOutputStream());
 
             switch (httpRequest.getMethod()) {
                 case GET -> {
-                    handleIfFileNotFound(file, outputStream);
-                    InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
-                    byte[] bytes = fileInputStream.readAllBytes();
-                    Encoding acceptedEncoding = Encoding.fromString(httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING));
-                    byte[] encodedResponseBody = encodeResponseBody(bytes, acceptedEncoding);
-                    String response = "HTTP/1.1 200 OK" + HTTPConstants.LINE_SEPARATOR;
-                    if (acceptedEncoding != null) {
-                        response += "Content-Encoding: " + acceptedEncoding + HTTPConstants.LINE_SEPARATOR;
+                    byte[] encodedContent = readFile(file);
+                    HTTPResponseBuilder builder = HTTPResponseBuilder.builder()
+                            .setVersion(HTTPVersion.HTTP1_1)
+                            .setStatusCode(HTTPStatusCode.OK)
+                            .addResponseHeader(ResponseHeader.CONTENT_TYPE, ContentType.OCTET_STREAM.value())
+                            .addResponseHeader(ResponseHeader.CONTENT_LENGTH, String.valueOf(encodedContent.length))
+                            .setResponseBody(encodedContent);
+                    if (httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING) != null) {
+                        builder.addResponseHeader(ResponseHeader.CONTENT_ENCODING,
+                                httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING));
                     }
-                    response += "Content-Type: application/octet-stream" + HTTPConstants.LINE_SEPARATOR + "Content-Length: %d" + HTTPConstants.LINE_SEPARATOR + HTTPConstants.LINE_SEPARATOR;
-                    response = String.format(response, encodedResponseBody.length);
-                    outputStream.write(response.getBytes());
-                    outputStream.write(encodedResponseBody);
-                    fileInputStream.close();
-                    outputStream.close();
+                    HTTPResponse response = builder.build();
+                    outputStream.write(response);
                     return true;
                 }
                 case POST -> {
-                    handleIfFileAlreadyExists(file, outputStream);
-                    if (!file.createNewFile()) {
-                        throw new IOException("Failed to create a new file.\n");
-                    }
-                    BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-                    writer.write(httpRequest.getRequestBody().getBody());
-                    writer.close();
-                    outputStream.write(("HTTP/1.1 201 Created" + HTTPConstants.LINE_SEPARATOR + HTTPConstants.LINE_SEPARATOR).getBytes());
-                    outputStream.close();
+                    writeToFile(file);
+                    HTTPResponse response = HTTPResponseBuilder.builder()
+                            .setVersion(HTTPVersion.HTTP1_1)
+                            .setStatusCode(HTTPStatusCode.CREATED)
+                            .build();
+                    outputStream.write(response);
                     return true;
                 }
                 default -> handleNotFound(false);
@@ -172,8 +163,26 @@ public class RequestExecutor implements Runnable {
         return false;
     }
 
+    private void writeToFile(File file) throws IOException {
+        handleIfFileAlreadyExists(file);
+        if (!file.createNewFile()) {
+            throw new IOException("Failed to create a new file.\n");
+        }
+        BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+        writer.write(httpRequest.getRequestBody().getBody());
+        writer.close();
+    }
+
+    private byte[] readFile(File file) throws IOException {
+        handleIfFileNotFound(file);
+        InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
+        byte[] bytes = fileInputStream.readAllBytes();
+        Encoding acceptedEncoding = Encoding.fromString(httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING));
+        return encodeResponseBody(bytes, acceptedEncoding);
+    }
+
     // Deletes the existing file for now.
-    private void handleIfFileAlreadyExists(File file, OutputStream outputStream) {
+    private void handleIfFileAlreadyExists(File file) {
         if (file.exists()) {
             file.delete();
         }
@@ -221,12 +230,4 @@ public class RequestExecutor implements Runnable {
         return baos.toByteArray();
     }
 
-    private int getContentLength(List<String> request) throws IOException {
-        Optional<String> contentLengthHeader = request.stream().filter(req -> req.startsWith("Content-Length: ")).findFirst();
-        if (contentLengthHeader.isPresent()) {
-            String contentLength = contentLengthHeader.get();
-            return Integer.parseInt(contentLength.substring("Content-Length: ".length()));
-        }
-        throw new IOException("Content-Length header is missing.\n");
-    }
 }
