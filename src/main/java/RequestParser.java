@@ -39,7 +39,7 @@ public class RequestParser {
         httpRequest.setVersion(HTTPVersion.fromString(requestLineParts[2]));
 
         requestWithoutBody.stream().skip(1).forEach(header -> {
-            String[] headerKeyValue = header.split(":");
+            String[] headerKeyValue = header.split(":");    // TODO: Host header is not parsed correctly since it contained multiple ':'
             RequestHeader headerKey = RequestHeader.fromString(headerKeyValue[0]);
             if (headerKey != null) {
                 String headerValue = headerKeyValue[1].strip();

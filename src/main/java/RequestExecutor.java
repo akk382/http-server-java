@@ -25,13 +25,10 @@ public class RequestExecutor implements Runnable {
     @Override
     public void run() {
         try {
-
             InputStream inputStream = client.getInputStream();
             httpRequest = RequestParser.parse(inputStream);
-
             boolean responded = handleBaseUri() || handleEcho() || handleUserAgent() || handleFiles();
             handleNotFound(responded);
-
             inputStream.close();
             client.close();
         } catch (IOException ex) {
@@ -55,8 +52,7 @@ public class RequestExecutor implements Runnable {
             return false;
         }
         String userAgent = httpRequest.getRequestHeader(RequestHeader.USER_AGENT);
-        Encoding acceptedEncoding = Encoding.fromString(
-                httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING));
+        Encoding acceptedEncoding = getAcceptedEncoding();
         byte[] encodedResponseBody = encodeResponseBody(userAgent, acceptedEncoding);
         HTTPResponseBuilder builder = HTTPResponseBuilder.builder()
                 .setVersion(HTTPVersion.HTTP1_1)
@@ -76,8 +72,7 @@ public class RequestExecutor implements Runnable {
     private boolean handleEcho() throws IOException {
         if (httpRequest.getUri().startsWith(SupportedURIs.ECHO.value())) {
             String restOfURI = httpRequest.getUri().substring(SupportedURIs.ECHO.value().length());
-            // TODO: support multiple encodings
-            Encoding acceptedEncoding = Encoding.fromString(httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING));
+            Encoding acceptedEncoding = getAcceptedEncoding();
             byte[] encodedResponseBody = encodeResponseBody(restOfURI, acceptedEncoding);
             HTTPResponseBuilder builder = HTTPResponseBuilder.builder()
                     .setVersion(HTTPVersion.HTTP1_1)
@@ -132,16 +127,16 @@ public class RequestExecutor implements Runnable {
 
             switch (httpRequest.getMethod()) {
                 case GET -> {
-                    byte[] encodedContent = readFile(file);
+                    Encoding acceptedEncoding = getAcceptedEncoding();
+                    byte[] encodedContent = readFile(file, acceptedEncoding);
                     HTTPResponseBuilder builder = HTTPResponseBuilder.builder()
                             .setVersion(HTTPVersion.HTTP1_1)
                             .setStatusCode(HTTPStatusCode.OK)
                             .addResponseHeader(ResponseHeader.CONTENT_TYPE, ContentType.OCTET_STREAM.value())
                             .addResponseHeader(ResponseHeader.CONTENT_LENGTH, String.valueOf(encodedContent.length))
                             .setResponseBody(encodedContent);
-                    if (httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING) != null) {
-                        builder.addResponseHeader(ResponseHeader.CONTENT_ENCODING,
-                                httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING));
+                    if (acceptedEncoding != null) {
+                        builder.addResponseHeader(ResponseHeader.CONTENT_ENCODING, acceptedEncoding.value());
                     }
                     HTTPResponse response = builder.build();
                     outputStream.write(response);
@@ -173,12 +168,12 @@ public class RequestExecutor implements Runnable {
         writer.close();
     }
 
-    private byte[] readFile(File file) throws IOException {
+    private byte[] readFile(File file, Encoding encodeType) throws IOException {
         handleIfFileNotFound(file);
         InputStream fileInputStream = new BufferedInputStream(new FileInputStream(file));
         byte[] bytes = fileInputStream.readAllBytes();
-        Encoding acceptedEncoding = Encoding.fromString(httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING));
-        return encodeResponseBody(bytes, acceptedEncoding);
+        fileInputStream.close();
+        return encodeResponseBody(bytes, encodeType);
     }
 
     // Deletes the existing file for now.
@@ -189,19 +184,17 @@ public class RequestExecutor implements Runnable {
     }
 
     /* Utility Methods */
-    private Encoding getAcceptedEncoding(List<String> request) {
-        return request.stream()
-                .filter(req -> req.startsWith("Accept-Encoding")).findFirst()
-                .map(acceptEncoding -> {
-                    String[] encodingTypes = acceptEncoding.substring("Accept-Encoding: ".length()).split(",");
-                    List<String> receivedEncodes = Arrays.stream(encodingTypes).map(String::strip).toList();
-                    for (Encoding encoding : Encoding.values()) {
-                        if (receivedEncodes.contains(encoding.toString())) {
-                            return encoding;
-                        }
-                    }
-                    return null;
-                }).orElse(null);
+    private Encoding getAcceptedEncoding() {
+        List<String> supportedEncodings = Arrays.stream(Encoding.values()).map(Encoding::value).toList();
+        return Optional.ofNullable(httpRequest.getRequestHeader(RequestHeader.ACCEPT_ENCODING))
+                .map(header -> header.split(","))
+                .stream()
+                .flatMap(Arrays::stream)
+                .map(String::strip)
+                .filter(supportedEncodings::contains)
+                .findFirst()
+                .map(Encoding::fromString)
+                .orElse(null);
     }
 
     private byte[] encodeResponseBody(String unEncodedResponseBody, Encoding encodeType) throws IOException {
