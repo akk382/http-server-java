@@ -111,6 +111,7 @@ public class RequestExecutor implements Runnable {
                     .setVersion(HTTPVersion.HTTP1_1)
                     .setStatusCode(HTTPStatusCode.OK)
                     .setKeepAlive(httpRequest.isKeepAlive())
+                    .addResponseHeader(ResponseHeader.CONTENT_LENGTH, String.valueOf(0))
                     .build();
             HTTPOutputStream outputStream = new HTTPOutputStream(client.getOutputStream());
             outputStream.write(response);
