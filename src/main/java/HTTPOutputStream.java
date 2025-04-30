@@ -32,7 +32,9 @@ public class HTTPOutputStream {
         builder.append(HTTPConstants.LINE_SEPARATOR);
 
         outputStream.write(builder.toString().getBytes());
-        if (response.getResponseHeaderMap().containsKey(ResponseHeader.CONTENT_LENGTH)) {
+        String contentLengthStr = response.getResponseHeaderMap().getOrDefault(ResponseHeader.CONTENT_LENGTH, "0");
+        int contentLength = Integer.parseInt(contentLengthStr);
+        if (contentLength > 0) {
             outputStream.write(response.getResponseBody());
         }
         outputStream.flush();
