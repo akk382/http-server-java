@@ -30,8 +30,6 @@ public class RequestExecutor implements Runnable {
             boolean responded = handleBaseUri() || handleEcho() || handleUserAgent() || handleFiles();
             handleNotFound(responded);
             closeConnection(inputStream, client, httpRequest);
-            inputStream.close();
-            client.close();
         } catch (IOException ex) {
             System.out.println("Error occurred: \n" + ex.getMessage());
         }

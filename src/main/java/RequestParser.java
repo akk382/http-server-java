@@ -49,8 +49,8 @@ public class RequestParser {
         });
         String connectionTypeHeader = httpRequest.getRequestHeader(RequestHeader.CONNECTION);
         ConnectionType connectionType = ConnectionType.fromString(connectionTypeHeader);
-        if (connectionType.equals(ConnectionType.KEEP_ALIVE)) {
-            httpRequest.setKeepAlive(true);
+        if (connectionType.equals(ConnectionType.CLOSE)) {
+            httpRequest.setKeepAlive(false);
         }
 
         // extract the request body from the POST request.
