@@ -13,7 +13,7 @@ public enum ConnectionType {
         } else if (CLOSE.type.equalsIgnoreCase(type)) {
             return CLOSE;
         }
-        return CLOSE;
+        return KEEP_ALIVE;
     }
 
     @Override
