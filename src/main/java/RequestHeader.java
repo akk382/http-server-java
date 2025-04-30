@@ -3,7 +3,8 @@ public enum RequestHeader {
     ACCEPT_ENCODING("Accept-Encoding"),
     USER_AGENT("User-Agent"),
     HOST("Host"),
-    ACCEPT("Accept");
+    ACCEPT("Accept"),
+    CONNECTION("Connection");
 
     private final String headerName;
     RequestHeader(String headerName) {
@@ -25,6 +26,8 @@ public enum RequestHeader {
             return HOST;
         } else if (ACCEPT.headerName.equalsIgnoreCase(header)) {
             return ACCEPT;
+        } else if (CONNECTION.headerName.equalsIgnoreCase(header)) {
+            return CONNECTION;
         } else {
             return null;
         }

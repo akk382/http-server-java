@@ -29,10 +29,20 @@ public class RequestExecutor implements Runnable {
             httpRequest = RequestParser.parse(inputStream);
             boolean responded = handleBaseUri() || handleEcho() || handleUserAgent() || handleFiles();
             handleNotFound(responded);
+            closeConnection(inputStream, client, httpRequest);
             inputStream.close();
             client.close();
         } catch (IOException ex) {
             System.out.println("Error occurred: \n" + ex.getMessage());
+        }
+    }
+
+    private void closeConnection(InputStream inputStream, Socket client, HTTPRequest httpRequest) throws IOException {
+        String connectionTypeHeader = httpRequest.getRequestHeader(RequestHeader.CONNECTION);
+        ConnectionType connectionType = ConnectionType.fromString(connectionTypeHeader);
+        if (connectionType == ConnectionType.CLOSE) {
+            inputStream.close();
+            client.close();
         }
     }
 

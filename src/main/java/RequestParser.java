@@ -38,6 +38,7 @@ public class RequestParser {
         httpRequest.setUri(requestLineParts[1]); // URL / resource path
         httpRequest.setVersion(HTTPVersion.fromString(requestLineParts[2]));
 
+        // Parse http headers
         requestWithoutBody.stream().skip(1).forEach(header -> {
             String[] headerKeyValue = header.split(":");    // TODO: Host header is not parsed correctly since it contained multiple ':'
             RequestHeader headerKey = RequestHeader.fromString(headerKeyValue[0]);
