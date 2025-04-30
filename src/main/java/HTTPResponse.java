@@ -6,6 +6,7 @@ public class HTTPResponse {
     private HTTPStatusCode statusCode;
     private Map<ResponseHeader, String> responseHeaderMap;
     private byte[] responseBody;
+    private boolean keepAlive;
 
     public HTTPVersion getVersion() {
         return version;
@@ -47,5 +48,13 @@ public class HTTPResponse {
 
     public void setResponseBody(byte[] responseBody) {
         this.responseBody = responseBody;
+    }
+
+    public boolean isKeepAlive() {
+        return keepAlive;
+    }
+
+    public void setKeepAlive(boolean keepAlive) {
+        this.keepAlive = keepAlive;
     }
 }

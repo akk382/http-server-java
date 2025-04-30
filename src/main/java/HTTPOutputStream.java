@@ -22,7 +22,15 @@ public class HTTPOutputStream {
                     builder.append(value);
                     builder.append(HTTPConstants.LINE_SEPARATOR);
                 });
+        // To keep the connection alive
+        if (response.isKeepAlive()) {
+            builder.append(HeaderPrefix.getHeaderPrefix(ResponseHeader.CONNECTION));
+            builder.append(ConnectionType.KEEP_ALIVE);
+            builder.append(HTTPConstants.LINE_SEPARATOR);
+        }
+
         builder.append(HTTPConstants.LINE_SEPARATOR);
+
         outputStream.write(builder.toString().getBytes());
         if (response.getResponseHeaderMap().containsKey(ResponseHeader.CONTENT_LENGTH)) {
             outputStream.write(response.getResponseBody());

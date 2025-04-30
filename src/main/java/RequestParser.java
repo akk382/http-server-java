@@ -47,6 +47,11 @@ public class RequestParser {
                 httpRequest.addRequestHeader(headerKey, headerValue);
             }
         });
+        String connectionTypeHeader = httpRequest.getRequestHeader(RequestHeader.CONNECTION);
+        ConnectionType connectionType = ConnectionType.fromString(connectionTypeHeader);
+        if (connectionType.equals(ConnectionType.KEEP_ALIVE)) {
+            httpRequest.setKeepAlive(true);
+        }
 
         // extract the request body from the POST request.
         if (httpRequest.getMethod().equals(HTTPMethod.POST)) {

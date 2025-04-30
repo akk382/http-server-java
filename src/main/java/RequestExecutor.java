@@ -52,6 +52,7 @@ public class RequestExecutor implements Runnable {
             HTTPResponse response = HTTPResponseBuilder.builder()
                     .setVersion(HTTPVersion.HTTP1_1)
                     .setStatusCode(HTTPStatusCode.NOT_FOUND)
+                    .setKeepAlive(httpRequest.isKeepAlive())
                     .build();
             outputStream.write(response);
         }
@@ -69,6 +70,7 @@ public class RequestExecutor implements Runnable {
                 .setStatusCode(HTTPStatusCode.OK)
                 .addResponseHeader(ResponseHeader.CONTENT_TYPE, ContentType.TEXT_PLAIN.value())
                 .addResponseHeader(ResponseHeader.CONTENT_LENGTH, String.valueOf(encodedResponseBody.length))
+                .setKeepAlive(httpRequest.isKeepAlive())
                 .setResponseBody(encodedResponseBody);
         if (acceptedEncoding != null) {
             builder.addResponseHeader(ResponseHeader.CONTENT_ENCODING, acceptedEncoding.value());
@@ -89,6 +91,7 @@ public class RequestExecutor implements Runnable {
                     .setStatusCode(HTTPStatusCode.OK)
                     .addResponseHeader(ResponseHeader.CONTENT_TYPE, ContentType.TEXT_PLAIN.value())
                     .addResponseHeader(ResponseHeader.CONTENT_LENGTH, String.valueOf(encodedResponseBody.length))
+                    .setKeepAlive(httpRequest.isKeepAlive())
                     .setResponseBody(encodedResponseBody);
             if (acceptedEncoding != null) {
                 builder.addResponseHeader(ResponseHeader.CONTENT_ENCODING, acceptedEncoding.value());
@@ -106,6 +109,7 @@ public class RequestExecutor implements Runnable {
             HTTPResponse response = HTTPResponseBuilder.builder()
                     .setVersion(HTTPVersion.HTTP1_1)
                     .setStatusCode(HTTPStatusCode.OK)
+                    .setKeepAlive(httpRequest.isKeepAlive())
                     .build();
             HTTPOutputStream outputStream = new HTTPOutputStream(client.getOutputStream());
             outputStream.write(response);
@@ -144,6 +148,7 @@ public class RequestExecutor implements Runnable {
                             .setStatusCode(HTTPStatusCode.OK)
                             .addResponseHeader(ResponseHeader.CONTENT_TYPE, ContentType.OCTET_STREAM.value())
                             .addResponseHeader(ResponseHeader.CONTENT_LENGTH, String.valueOf(encodedContent.length))
+                            .setKeepAlive(httpRequest.isKeepAlive())
                             .setResponseBody(encodedContent);
                     if (acceptedEncoding != null) {
                         builder.addResponseHeader(ResponseHeader.CONTENT_ENCODING, acceptedEncoding.value());
@@ -157,6 +162,7 @@ public class RequestExecutor implements Runnable {
                     HTTPResponse response = HTTPResponseBuilder.builder()
                             .setVersion(HTTPVersion.HTTP1_1)
                             .setStatusCode(HTTPStatusCode.CREATED)
+                            .setKeepAlive(httpRequest.isKeepAlive())
                             .build();
                     outputStream.write(response);
                     return true;

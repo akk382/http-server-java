@@ -1,7 +1,8 @@
 public enum ResponseHeader {
     CONTENT_ENCODING("Content-Encoding"),
     CONTENT_TYPE("Content-Type"),
-    CONTENT_LENGTH("Content-Length");
+    CONTENT_LENGTH("Content-Length"),
+    CONNECTION("Connection");
 
     private final String header;
     ResponseHeader(String header) {

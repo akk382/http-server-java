@@ -8,6 +8,7 @@ public class HTTPRequest {
     private Map<RequestHeader, String> requestHeaderMap;
     private RequestBody requestBody;
     private String uri;
+    private boolean keepAlive;
 
     public HTTPMethod getMethod() {
         return method;
@@ -61,5 +62,13 @@ public class HTTPRequest {
             return null;
         }
         return this.requestHeaderMap.getOrDefault(requestHeader, null);
+    }
+
+    public boolean isKeepAlive() {
+        return keepAlive;
+    }
+
+    public void setKeepAlive(boolean keepAlive) {
+        this.keepAlive = keepAlive;
     }
 }

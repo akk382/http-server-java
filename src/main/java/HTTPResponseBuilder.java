@@ -7,6 +7,7 @@ public class HTTPResponseBuilder {
     private HTTPStatusCode statusCode;
     private Map<ResponseHeader, String> responseHeaderMap;
     private byte[] responseBody;
+    private boolean keepAlive;
 
     public static HTTPResponseBuilder builder() {
         return new HTTPResponseBuilder();
@@ -18,6 +19,7 @@ public class HTTPResponseBuilder {
         response.setResponseBody(this.responseBody);
         response.setVersion(this.version);
         response.setResponseHeaderMap(responseHeaderMap);
+        response.setKeepAlive(keepAlive);
         return response;
     }
 
@@ -46,6 +48,11 @@ public class HTTPResponseBuilder {
 
     public HTTPResponseBuilder setResponseBody(byte[] responseBody) {
         this.responseBody = responseBody;
+        return this;
+    }
+
+    public HTTPResponseBuilder setKeepAlive(boolean keepAlive) {
+        this.keepAlive = keepAlive;
         return this;
     }
 }
